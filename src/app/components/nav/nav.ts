@@ -24,6 +24,12 @@ import { AuthService } from '../../services/auth.service';
         <div class="nav-actions">
           @if (auth.isLoggedIn()) {
             <a routerLink="/trips" class="nav-browse">Browse Trips</a>
+            @if (auth.user()?.role === 'admin') {
+              <a routerLink="/admin" class="nav-admin">Admin</a>
+            }
+            @if (auth.user()?.role === 'superadmin') {
+              <a routerLink="/superadmin" class="nav-superadmin">Super Admin</a>
+            }
             <a routerLink="/dashboard" class="nav-user-btn">
               <span class="nav-avatar">{{ initials() }}</span>
               <span class="nav-username">{{ firstName() }}</span>
@@ -48,6 +54,12 @@ import { AuthService } from '../../services/auth.service';
           <a routerLink="/" fragment="contact" (click)="menuOpen.set(false)">Contact</a>
           @if (auth.isLoggedIn()) {
             <a routerLink="/dashboard" (click)="menuOpen.set(false)">My Bookings</a>
+            @if (auth.user()?.role === 'admin') {
+              <a routerLink="/admin" (click)="menuOpen.set(false)">Admin</a>
+            }
+            @if (auth.user()?.role === 'superadmin') {
+              <a routerLink="/superadmin" (click)="menuOpen.set(false)">Super Admin</a>
+            }
             <button class="mobile-logout" (click)="auth.logout(); menuOpen.set(false)">Sign Out</button>
           } @else {
             <a routerLink="/login" (click)="menuOpen.set(false)">Sign In</a>
@@ -133,6 +145,28 @@ import { AuthService } from '../../services/auth.service';
       transition: background 0.15s;
     }
     .nav-browse:hover { background: rgba(44,74,62,0.08); }
+    .nav-admin {
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #2C4A3E;
+      background: rgba(44,74,62,0.08);
+      text-decoration: none;
+      border-radius: 100px;
+      transition: background 0.15s;
+    }
+    .nav-admin:hover { background: rgba(44,74,62,0.16); }
+    .nav-superadmin {
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #C8622A;
+      background: rgba(200,98,42,0.08);
+      text-decoration: none;
+      border-radius: 100px;
+      transition: background 0.15s;
+    }
+    .nav-superadmin:hover { background: rgba(200,98,42,0.16); }
     .nav-signin {
       padding: 8px 16px;
       font-size: 0.82rem;

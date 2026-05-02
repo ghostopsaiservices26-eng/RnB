@@ -3,11 +3,14 @@ import { Router } from '@angular/router';
 import { supabase } from '../supabase.client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
+export type UserRole = 'user' | 'admin' | 'superadmin';
+
 export interface User {
   id: string;
   name: string;
   email: string;
   phone: string;
+  role: UserRole;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -18,24 +21,48 @@ export class AuthService {
   readonly user = this._user.asReadonly();
   readonly isLoggedIn = computed(() => !!this._user());
 
+  private _roleReady = false;
+  private _rolePromise: Promise<void>;
+  private _roleResolve!: () => void;
+
   constructor() {
-    // Load existing session on startup
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      this._user.set(session ? this.mapUser(session.user) : null);
+    this._rolePromise = new Promise(res => { this._roleResolve = res; });
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const u = await this.mapUser(session.user);
+        this._user.set(u);
+      }
+      this._roleReady = true;
+      this._roleResolve();
     });
 
-    // Keep signal in sync with Supabase auth state changes
-    supabase.auth.onAuthStateChange((_event, session) => {
-      this._user.set(session ? this.mapUser(session.user) : null);
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        const u = await this.mapUser(session.user);
+        this._user.set(u);
+      } else {
+        this._user.set(null);
+      }
     });
   }
 
-  private mapUser(u: SupabaseUser): User {
+  roleLoaded(): Promise<void> {
+    return this._roleReady ? Promise.resolve() : this._rolePromise;
+  }
+
+  private async mapUser(u: SupabaseUser): Promise<User> {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', u.id)
+      .single();
     return {
       id: u.id,
       name: u.user_metadata?.['name'] ?? u.email ?? '',
       email: u.email ?? '',
       phone: u.user_metadata?.['phone'] ?? '',
+      role: (data?.['role'] as UserRole) ?? 'user',
     };
   }
 
