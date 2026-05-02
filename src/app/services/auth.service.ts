@@ -28,22 +28,15 @@ export class AuthService {
   constructor() {
     this._rolePromise = new Promise(res => { this._roleResolve = res; });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        const u = await this.mapUser(session.user);
-        this._user.set(u);
-      }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) this.setUser(session.user);
       this._roleReady = true;
       this._roleResolve();
     });
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
-        const u = await this.mapUser(session.user);
-        this._user.set(u);
-      } else {
-        this._user.set(null);
-      }
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) this.setUser(session.user);
+      else this._user.set(null);
     });
   }
 
@@ -51,23 +44,21 @@ export class AuthService {
     return this._roleReady ? Promise.resolve() : this._rolePromise;
   }
 
-  private async mapUser(u: SupabaseUser): Promise<User> {
-    let role: UserRole = 'user';
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', u.id)
-        .maybeSingle();
-      if (data?.['role']) role = data['role'] as UserRole;
-    } catch (_) {}
-    return {
+  private setUser(u: SupabaseUser) {
+    const base: User = {
       id: u.id,
       name: u.user_metadata?.['name'] ?? u.email ?? '',
       email: u.email ?? '',
       phone: u.user_metadata?.['phone'] ?? '',
-      role,
+      role: 'user',
     };
+    this._user.set(base);
+    // fetch role async without blocking
+    supabase.from('profiles').select('role').eq('id', u.id).maybeSingle().then(({ data }) => {
+      if (data?.['role']) {
+        this._user.update(cur => cur ? { ...cur, role: data['role'] as UserRole } : cur);
+      }
+    });
   }
 
   async register(
