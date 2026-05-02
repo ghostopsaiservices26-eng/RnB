@@ -187,7 +187,7 @@ function lerp(a: number, b: number, t: number) {
     /* ── Arc content (fades in on scroll) ────────────── */
     .smh-arc-content {
       position: absolute;
-      top: 8%;
+      top: 40%;
       left: 50%;
       transform: translateX(-50%) translateY(20px);
       z-index: 10;
