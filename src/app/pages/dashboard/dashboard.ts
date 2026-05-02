@@ -344,10 +344,10 @@ export class DashboardComponent implements OnInit {
     private bookingSvc: BookingService,
   ) {}
 
-  ngOnInit() {
+  async ngOnInit() {
     const user = this.auth.user();
     if (user) {
-      this.bookings.set(this.bookingSvc.getUserBookings(user.id));
+      this.bookings.set(await this.bookingSvc.getUserBookings(user.id));
     }
   }
 
@@ -378,13 +378,13 @@ export class DashboardComponent implements OnInit {
     this.cancelTarget.set(booking);
   }
 
-  confirmCancel() {
+  async confirmCancel() {
     const b = this.cancelTarget();
     const user = this.auth.user();
     if (!b || !user) return;
 
-    this.bookingSvc.cancelBooking(b.id, user.id);
-    this.bookings.set(this.bookingSvc.getUserBookings(user.id));
+    await this.bookingSvc.cancelBooking(b.id);
+    this.bookings.set(await this.bookingSvc.getUserBookings(user.id));
     this.cancelTarget.set(null);
   }
 }

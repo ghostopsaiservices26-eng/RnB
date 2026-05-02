@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { supabase } from '../supabase.client';
 
 export interface Trip {
   id: string;
@@ -169,6 +170,8 @@ export const TRIPS: Trip[] = [
   },
 ];
 
+type CreateBookingPayload = Omit<Booking, 'id' | 'createdAt' | 'status'>;
+
 @Injectable({ providedIn: 'root' })
 export class BookingService {
   getTrips(): Trip[] {
@@ -183,39 +186,66 @@ export class BookingService {
     return TRIPS.filter(t => t.category === category);
   }
 
-  getUserBookings(userId: string): Booking[] {
-    try {
-      const raw = localStorage.getItem('rnb_bookings');
-      const all: Booking[] = raw ? JSON.parse(raw) : [];
-      return all.filter(b => b.userId === userId).sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    } catch { return []; }
+  async getUserBookings(userId: string): Promise<Booking[]> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) { console.error(error); return []; }
+    return (data ?? []).map(this.mapRow);
   }
 
-  createBooking(payload: Omit<Booking, 'id' | 'createdAt' | 'status'>): Booking {
-    const raw = localStorage.getItem('rnb_bookings');
-    const all: Booking[] = raw ? JSON.parse(raw) : [];
-    const booking: Booking = {
-      ...payload,
-      id: crypto.randomUUID(),
-      status: 'confirmed',
-      createdAt: new Date().toISOString(),
+  async createBooking(payload: CreateBookingPayload): Promise<Booking> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert({
+        trip_id:          payload.tripId,
+        trip_name:        payload.tripName,
+        trip_image:       payload.tripImage,
+        trip_location:    payload.tripLocation,
+        user_id:          payload.userId,
+        selected_date:    payload.selectedDate,
+        seats:            payload.seats,
+        total_price:      payload.totalPrice,
+        contact_name:     payload.contactName,
+        contact_phone:    payload.contactPhone,
+        special_requests: payload.specialRequests,
+        status:           'confirmed',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.mapRow(data);
+  }
+
+  async cancelBooking(bookingId: string): Promise<void> {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'cancelled' })
+      .eq('id', bookingId);
+
+    if (error) throw error;
+  }
+
+  private mapRow(row: Record<string, unknown>): Booking {
+    return {
+      id:              row['id'] as string,
+      tripId:          row['trip_id'] as string,
+      tripName:        row['trip_name'] as string,
+      tripImage:       row['trip_image'] as string,
+      tripLocation:    row['trip_location'] as string,
+      userId:          row['user_id'] as string,
+      selectedDate:    row['selected_date'] as string,
+      seats:           row['seats'] as number,
+      totalPrice:      row['total_price'] as number,
+      status:          row['status'] as Booking['status'],
+      createdAt:       row['created_at'] as string,
+      contactName:     row['contact_name'] as string,
+      contactPhone:    row['contact_phone'] as string,
+      specialRequests: row['special_requests'] as string,
     };
-    all.push(booking);
-    localStorage.setItem('rnb_bookings', JSON.stringify(all));
-    return booking;
-  }
-
-  cancelBooking(bookingId: string, userId: string): boolean {
-    try {
-      const raw = localStorage.getItem('rnb_bookings');
-      const all: Booking[] = raw ? JSON.parse(raw) : [];
-      const idx = all.findIndex(b => b.id === bookingId && b.userId === userId);
-      if (idx === -1) return false;
-      all[idx].status = 'cancelled';
-      localStorage.setItem('rnb_bookings', JSON.stringify(all));
-      return true;
-    } catch { return false; }
   }
 }

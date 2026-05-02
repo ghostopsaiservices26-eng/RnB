@@ -243,14 +243,14 @@ export class RegisterComponent {
       (c.hasError('required') || mismatch);
   }
 
-  submit() {
+  async submit() {
     this.submitted = true;
     this.serverError.set('');
     if (this.form.invalid) return;
 
     this.loading.set(true);
     const { name, email, phone, password } = this.form.getRawValue();
-    const result = this.auth.register(name, email, phone, password);
+    const result = await this.auth.register(name, email, phone, password);
     this.loading.set(false);
 
     if (!result.success) {

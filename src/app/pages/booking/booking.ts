@@ -554,33 +554,38 @@ export class BookingComponent implements OnInit {
     }
   }
 
-  confirmBooking() {
+  async confirmBooking() {
     const user = this.auth.user();
     const t = this.trip();
     if (!user || !t) return;
 
     this.loading.set(true);
-    const { date, seats } = this.step1Form.getRawValue();
-    const { contactName, contactPhone, specialRequests } = this.step2Form.getRawValue();
+    try {
+      const { date, seats } = this.step1Form.getRawValue();
+      const { contactName, contactPhone, specialRequests } = this.step2Form.getRawValue();
 
-    const booking = this.bookingSvc.createBooking({
-      tripId: t.id,
-      tripName: t.name,
-      tripImage: t.images[0],
-      tripLocation: t.location,
-      userId: user.id,
-      selectedDate: date,
-      seats,
-      totalPrice: this.totalPrice(),
-      contactName,
-      contactPhone,
-      specialRequests,
-    });
+      const booking = await this.bookingSvc.createBooking({
+        tripId: t.id,
+        tripName: t.name,
+        tripImage: t.images[0],
+        tripLocation: t.location,
+        userId: user.id,
+        selectedDate: date,
+        seats,
+        totalPrice: this.totalPrice(),
+        contactName,
+        contactPhone,
+        specialRequests,
+      });
 
-    this.loading.set(false);
-    this.bookingId.set(booking.id.slice(0, 8).toUpperCase());
-    this.step.set(4);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.bookingId.set(booking.id.slice(0, 8).toUpperCase());
+      this.step.set(4);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('Booking failed:', err);
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   categoryLabel(cat: Trip['category']): string {

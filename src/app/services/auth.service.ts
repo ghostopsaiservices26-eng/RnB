@@ -1,77 +1,71 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { supabase } from '../supabase.client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   phone: string;
-  createdAt: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private _user = signal<User | null>(this.loadUser());
+  private router = inject(Router);
+
+  private _user = signal<User | null>(null);
   readonly user = this._user.asReadonly();
   readonly isLoggedIn = computed(() => !!this._user());
 
-  constructor(private router: Router) {}
+  constructor() {
+    // Load existing session on startup
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      this._user.set(session ? this.mapUser(session.user) : null);
+    });
 
-  private loadUser(): User | null {
-    try {
-      const raw = localStorage.getItem('rnb_user');
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
+    // Keep signal in sync with Supabase auth state changes
+    supabase.auth.onAuthStateChange((_event, session) => {
+      this._user.set(session ? this.mapUser(session.user) : null);
+    });
   }
 
-  private getAllUsers(): Record<string, { user: User; password: string }> {
-    try {
-      const raw = localStorage.getItem('rnb_users');
-      return raw ? JSON.parse(raw) : {};
-    } catch { return {}; }
+  private mapUser(u: SupabaseUser): User {
+    return {
+      id: u.id,
+      name: u.user_metadata?.['name'] ?? u.email ?? '',
+      email: u.email ?? '',
+      phone: u.user_metadata?.['phone'] ?? '',
+    };
   }
 
-  register(
+  async register(
     name: string,
     email: string,
     phone: string,
-    password: string
-  ): { success: boolean; error?: string } {
-    const users = this.getAllUsers();
-    const key = email.toLowerCase().trim();
-    if (users[key]) {
-      return { success: false, error: 'An account with this email already exists.' };
-    }
-    const user: User = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      email: key,
-      phone: phone.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    users[key] = { user, password };
-    localStorage.setItem('rnb_users', JSON.stringify(users));
-    this.persist(user);
+    password: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, phone } },
+    });
+    if (error) return { success: false, error: error.message };
     return { success: true };
   }
 
-  login(email: string, password: string): { success: boolean; error?: string } {
-    const users = this.getAllUsers();
-    const entry = users[email.toLowerCase().trim()];
-    if (!entry) return { success: false, error: 'No account found with this email.' };
-    if (entry.password !== password) return { success: false, error: 'Incorrect password. Please try again.' };
-    this.persist(entry.user);
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
     return { success: true };
   }
 
-  logout() {
+  async logout(): Promise<void> {
+    await supabase.auth.signOut();
     this._user.set(null);
-    localStorage.removeItem('rnb_user');
     this.router.navigate(['/']);
-  }
-
-  private persist(user: User) {
-    this._user.set(user);
-    localStorage.setItem('rnb_user', JSON.stringify(user));
   }
 }

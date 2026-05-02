@@ -241,14 +241,14 @@ export class LoginComponent {
     return !!c && c.invalid && (c.dirty || c.touched || this.submitted);
   }
 
-  submit() {
+  async submit() {
     this.submitted = true;
     this.serverError.set('');
     if (this.form.invalid) return;
 
     this.loading.set(true);
     const { email, password } = this.form.getRawValue();
-    const result = this.auth.login(email, password);
+    const result = await this.auth.login(email, password);
     this.loading.set(false);
 
     if (!result.success) {

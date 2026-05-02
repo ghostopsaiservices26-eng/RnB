@@ -1,14 +1,13 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '../services/auth.service';
+import { supabase } from '../supabase.client';
 
-export const authGuard: CanActivateFn = (route) => {
-  const auth = inject(AuthService);
+export const authGuard: CanActivateFn = async (route) => {
   const router = inject(Router);
+  const { data: { session } } = await supabase.auth.getSession();
 
-  if (auth.isLoggedIn()) return true;
+  if (session) return true;
 
-  // Preserve the intended destination so we can redirect after login
   const returnUrl = route.url.map(s => s.path).join('/');
   return router.createUrlTree(['/login'], {
     queryParams: { returnUrl: '/' + returnUrl },
