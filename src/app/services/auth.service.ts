@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { supabase } from '../supabase.client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -16,6 +16,7 @@ export interface User {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private router = inject(Router);
+  private zone = inject(NgZone);
 
   private _user = signal<User | null>(null);
   readonly user = this._user.asReadonly();
@@ -35,8 +36,10 @@ export class AuthService {
     });
 
     supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) this.setUser(session.user);
-      else this._user.set(null);
+      this.zone.run(() => {
+        if (session) this.setUser(session.user);
+        else this._user.set(null);
+      });
     });
   }
 
@@ -56,7 +59,9 @@ export class AuthService {
     // fetch role async without blocking
     supabase.from('profiles').select('role').eq('id', u.id).maybeSingle().then(({ data }) => {
       if (data?.['role']) {
-        this._user.update(cur => cur ? { ...cur, role: data['role'] as UserRole } : cur);
+        this.zone.run(() => {
+          this._user.update(cur => cur ? { ...cur, role: data['role'] as UserRole } : cur);
+        });
       }
     });
   }
