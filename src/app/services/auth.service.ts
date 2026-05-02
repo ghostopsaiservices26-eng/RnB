@@ -52,17 +52,21 @@ export class AuthService {
   }
 
   private async mapUser(u: SupabaseUser): Promise<User> {
-    const { data } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', u.id)
-      .single();
+    let role: UserRole = 'user';
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', u.id)
+        .maybeSingle();
+      if (data?.['role']) role = data['role'] as UserRole;
+    } catch (_) {}
     return {
       id: u.id,
       name: u.user_metadata?.['name'] ?? u.email ?? '',
       email: u.email ?? '',
       phone: u.user_metadata?.['phone'] ?? '',
-      role: (data?.['role'] as UserRole) ?? 'user',
+      role,
     };
   }
 
