@@ -281,27 +281,15 @@ export class AdminComponent implements OnInit {
 
   async loadUsers() {
     this.usersLoading.set(true);
-
-    const [{ data: meta }, { data: profiles }] = await Promise.all([
-      supabase.rpc('get_users_metadata'),
-      supabase.from('profiles').select('id, role, created_at'),
-    ]);
-
-    const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-
-    const users: AdminUser[] = (meta ?? []).map((m: any) => {
-      const p = profileMap.get(m.id);
-      return {
-        id: m.id,
-        email: m.email ?? '',
-        name: m.name ?? '',
-        phone: m.phone ?? '',
-        role: p?.role ?? 'user',
-        created_at: p?.created_at ?? m.created_at ?? '',
-      };
-    });
-
-    this.users.set(users);
+    const { data: meta } = await supabase.rpc('get_users_metadata');
+    this.users.set((meta ?? []).map((m: any) => ({
+      id: m.id,
+      email: m.email ?? '',
+      name: m.name ?? '',
+      phone: m.phone ?? '',
+      role: m.role ?? 'user',
+      created_at: m.created_at ?? '',
+    })));
     this.usersLoading.set(false);
   }
 
