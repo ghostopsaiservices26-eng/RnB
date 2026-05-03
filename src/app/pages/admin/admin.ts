@@ -49,27 +49,44 @@ interface AdminUser {
                 <h3>{{ editingTrip() ? 'Edit Trip' : 'New Trip' }}</h3>
                 <div class="form-grid">
                   <div class="field">
-                    <label>Name</label>
-                    <input [(ngModel)]="tripDraft.name" placeholder="Trip name" />
+                    <label>Title</label>
+                    <input [(ngModel)]="tripDraft.name" placeholder="Trip title" />
                   </div>
                   <div class="field">
                     <label>Tagline</label>
                     <input [(ngModel)]="tripDraft.tagline" placeholder="Short tagline" />
                   </div>
                   <div class="field">
-                    <label>Location</label>
+                    <label>Destination</label>
                     <input [(ngModel)]="tripDraft.location" placeholder="City, State" />
                   </div>
                   <div class="field">
-                    <label>Duration</label>
-                    <input [(ngModel)]="tripDraft.duration" placeholder="e.g. 3 Days / 2 Nights" />
+                    <label>Trip Type</label>
+                    <select [(ngModel)]="tripDraft.category">
+                      <option value="group">Group Trip</option>
+                      <option value="workcation">Workcation</option>
+                      <option value="corporate">Corporate</option>
+                      <option value="villa">Private Villa</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Start Date</label>
+                    <input type="date" [(ngModel)]="tripDraft.startDate" />
+                  </div>
+                  <div class="field">
+                    <label>End Date</label>
+                    <input type="date" [(ngModel)]="tripDraft.endDate" />
                   </div>
                   <div class="field">
                     <label>Price (₹)</label>
                     <input type="number" [(ngModel)]="tripDraft.price" />
                   </div>
                   <div class="field">
-                    <label>Max Seats</label>
+                    <label>Original Price (₹)</label>
+                    <input type="number" [(ngModel)]="tripDraft.originalPrice" />
+                  </div>
+                  <div class="field">
+                    <label>Capacity</label>
                     <input type="number" [(ngModel)]="tripDraft.maxSeats" />
                   </div>
                   <div class="field">
@@ -77,12 +94,11 @@ interface AdminUser {
                     <input type="number" [(ngModel)]="tripDraft.seatsLeft" />
                   </div>
                   <div class="field">
-                    <label>Category</label>
-                    <select [(ngModel)]="tripDraft.category">
-                      <option value="group">Group Trip</option>
-                      <option value="workcation">Workcation</option>
-                      <option value="corporate">Corporate</option>
-                      <option value="villa">Private Villa</option>
+                    <label>Status</label>
+                    <select [(ngModel)]="tripDraft.status">
+                      <option value="published">Published</option>
+                      <option value="draft">Draft</option>
+                      <option value="archived">Archived</option>
                     </select>
                   </div>
                   <div class="field full">
@@ -303,7 +319,7 @@ export class AdminComponent implements OnInit {
   editingTrip = signal<Trip | null>(null);
   deleteTarget = signal<{ type: 'trip' | 'user'; id: string; name: string } | null>(null);
 
-  tripDraft: Partial<Trip> & { imageUrls?: string[] } = {};
+  tripDraft: Partial<Trip> & { imageUrls?: string[]; startDate?: string; endDate?: string } = {};
   uploading = signal(false);
 
   async ngOnInit() {
@@ -332,13 +348,13 @@ export class AdminComponent implements OnInit {
 
   openTripForm() {
     this.editingTrip.set(null);
-    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0, imageUrls: [] };
+    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0, status: 'published', imageUrls: [] };
     this.tripFormOpen.set(true);
   }
 
   editTrip(t: Trip) {
     this.editingTrip.set(t);
-    this.tripDraft = { ...t, imageUrls: [...t.images] };
+    this.tripDraft = { ...t, imageUrls: [...t.images], startDate: (t as any).startDate ?? '', endDate: (t as any).endDate ?? '' };
     this.tripFormOpen.set(true);
   }
 
@@ -395,17 +411,19 @@ export class AdminComponent implements OnInit {
     if (!draft.name || !draft.location) return;
 
     const payload = {
-      name: draft.name!,
-      tagline: draft.tagline ?? '',
-      location: draft.location!,
-      duration: draft.duration ?? '',
-      price: draft.price ?? 0,
-      max_seats: draft.maxSeats ?? 12,
-      seats_left: draft.seatsLeft ?? 12,
-      trip_type: draft.category ?? 'group',
-      description: draft.description ?? '',
-      image_url: draft.imageUrls?.[0] ?? '',
-      images: draft.imageUrls ?? [],
+      title:          draft.name!,
+      tagline:        draft.tagline ?? '',
+      destination:    draft.location!,
+      trip_type:      draft.category ?? 'group',
+      start_date:     draft.startDate || null,
+      end_date:       draft.endDate || null,
+      price:          draft.price ?? 0,
+      original_price: draft.originalPrice ?? null,
+      capacity:       draft.maxSeats ?? 12,
+      seats_left:     draft.seatsLeft ?? 12,
+      status:         (draft.status as string) ?? 'published',
+      description:    draft.description ?? '',
+      images:         draft.imageUrls ?? [],
     };
 
     const editing = this.editingTrip();
@@ -447,24 +465,35 @@ export class AdminComponent implements OnInit {
     this.deleteTarget.set(null);
   }
 
-  private mapTripRow(row: any): Trip {
+  private mapTripRow(row: any): Trip & { startDate?: string; endDate?: string } {
+    const nights = row.start_date && row.end_date
+      ? Math.round((new Date(row.end_date).getTime() - new Date(row.start_date).getTime()) / 86400000)
+      : 0;
+    const duration = nights > 0 ? `${nights + 1} Days / ${nights} Nights` : '';
+    const dateLabel = row.start_date && row.end_date
+      ? `${new Date(row.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${new Date(row.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      : '';
     return {
-      id: row.id,
-      name: row.name,
-      tagline: row.tagline ?? '',
-      location: row.location,
-      duration: row.duration,
-      price: row.price,
-      maxSeats: row.max_seats,
-      seatsLeft: row.seats_left,
-      dates: row.dates ?? [],
-      category: row.trip_type,
-      images: Array.isArray(row.images) && row.images.length ? row.images : row.image_url ? [row.image_url] : [],
-      description: row.description ?? '',
-      highlights: row.highlights ?? [],
-      includes: row.includes ?? [],
-      rating: row.rating ?? 0,
-      reviews: row.reviews ?? 0,
+      id:            row.id,
+      name:          row.title ?? '',
+      tagline:       row.tagline ?? '',
+      location:      row.destination ?? '',
+      duration,
+      price:         row.price ?? 0,
+      originalPrice: row.original_price ?? undefined,
+      maxSeats:      row.capacity ?? 12,
+      seatsLeft:     row.seats_left ?? 0,
+      dates:         dateLabel ? [dateLabel] : [],
+      category:      row.trip_type ?? 'group',
+      images:        Array.isArray(row.images) && row.images.length ? row.images : [],
+      description:   row.description ?? '',
+      highlights:    [],
+      includes:      [],
+      rating:        0,
+      reviews:       0,
+      status:        row.status ?? 'published',
+      startDate:     row.start_date ?? '',
+      endDate:       row.end_date ?? '',
     };
   }
 }

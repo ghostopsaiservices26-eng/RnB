@@ -251,25 +251,33 @@ export class BookingService {
   }
 
   mapTripRow(row: Record<string, unknown>): Trip {
-    const dates = row['dates'];
+    const start = row['start_date'] as string | null;
+    const end = row['end_date'] as string | null;
+    const nights = start && end
+      ? Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000)
+      : 0;
+    const duration = nights > 0 ? `${nights + 1} Days / ${nights} Nights` : '';
+    const dateLabel = start && end
+      ? `${new Date(start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${new Date(end).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      : '';
     return {
       id:            row['id'] as string,
-      name:          row['name'] as string,
+      name:          (row['title'] as string) ?? '',
       tagline:       (row['tagline'] as string) ?? '',
-      location:      (row['location'] as string) ?? '',
-      duration:      (row['duration'] as string) ?? '',
+      location:      (row['destination'] as string) ?? '',
+      duration,
       price:         (row['price'] as number) ?? 0,
       originalPrice: row['original_price'] as number | undefined,
-      maxSeats:      (row['max_seats'] as number) ?? 12,
+      maxSeats:      (row['capacity'] as number) ?? 12,
       seatsLeft:     (row['seats_left'] as number) ?? 0,
-      dates:         Array.isArray(dates) ? dates as string[] : [],
+      dates:         dateLabel ? [dateLabel] : [],
       category:      (row['trip_type'] as Trip['category']) ?? 'group',
-      images:        Array.isArray(row['images']) && (row['images'] as string[]).length ? row['images'] as string[] : row['image_url'] ? [row['image_url'] as string] : [],
+      images:        Array.isArray(row['images']) && (row['images'] as string[]).length ? row['images'] as string[] : [],
       description:   (row['description'] as string) ?? '',
-      highlights:    Array.isArray(row['highlights']) ? row['highlights'] as string[] : [],
-      includes:      Array.isArray(row['includes']) ? row['includes'] as string[] : [],
-      rating:        (row['rating'] as number) ?? 0,
-      reviews:       (row['review_count'] ?? row['reviews']) as number ?? 0,
+      highlights:    [],
+      includes:      [],
+      rating:        0,
+      reviews:       0,
       status:        (row['status'] as string) ?? 'published',
     };
   }
