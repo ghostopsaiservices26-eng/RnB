@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { BookingService, Trip } from '../../services/booking.service';
 
@@ -273,6 +273,7 @@ type Filter = 'all' | 'group' | 'workcation' | 'corporate' | 'villa';
 })
 export class TripsPageComponent implements OnInit {
   private bookingSvc = inject(BookingService);
+  private route = inject(ActivatedRoute);
 
   filters: { key: Filter; label: string }[] = [
     { key: 'all',        label: 'All Trips' },
@@ -293,6 +294,8 @@ export class TripsPageComponent implements OnInit {
   });
 
   async ngOnInit() {
+    const cat = this.route.snapshot.queryParamMap.get('category') as Filter | null;
+    if (cat && cat !== 'all') this.activeFilter.set(cat);
     this.allTrips.set(await this.bookingSvc.getTrips());
     this.loading.set(false);
   }

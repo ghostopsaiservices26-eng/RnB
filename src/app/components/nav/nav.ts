@@ -15,9 +15,9 @@ import { AuthService } from '../../services/auth.service';
           <span class="logo-sub">Roam &amp; Beyond</span>
         </a>
         <ul class="nav-links">
-          <li><a routerLink="/" fragment="trips">Trips</a></li>
-          <li><a routerLink="/" fragment="workcation">Workcations</a></li>
-          <li><a routerLink="/" fragment="corporate">Corporate</a></li>
+          <li><a routerLink="/trips" [queryParams]="{category: 'group'}">Trips</a></li>
+          <li><a routerLink="/trips" [queryParams]="{category: 'workcation'}">Workcations</a></li>
+          <li><a routerLink="/trips" [queryParams]="{category: 'corporate'}">Corporate</a></li>
           <li><a routerLink="/" fragment="team">About</a></li>
           <li><a routerLink="/" fragment="contact">Contact</a></li>
         </ul>
@@ -47,9 +47,9 @@ import { AuthService } from '../../services/auth.service';
       </div>
       @if (menuOpen()) {
         <div class="nav-mobile">
-          <a routerLink="/" fragment="trips" (click)="menuOpen.set(false)">Trips</a>
-          <a routerLink="/" fragment="workcation" (click)="menuOpen.set(false)">Workcations</a>
-          <a routerLink="/" fragment="corporate" (click)="menuOpen.set(false)">Corporate</a>
+          <a routerLink="/trips" [queryParams]="{category: 'group'}" (click)="menuOpen.set(false)">Trips</a>
+          <a routerLink="/trips" [queryParams]="{category: 'workcation'}" (click)="menuOpen.set(false)">Workcations</a>
+          <a routerLink="/trips" [queryParams]="{category: 'corporate'}" (click)="menuOpen.set(false)">Corporate</a>
           <a routerLink="/" fragment="team" (click)="menuOpen.set(false)">About</a>
           <a routerLink="/" fragment="contact" (click)="menuOpen.set(false)">Contact</a>
           @if (auth.isLoggedIn()) {
