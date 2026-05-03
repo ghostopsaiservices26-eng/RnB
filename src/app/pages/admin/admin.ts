@@ -95,7 +95,7 @@ interface AdminUser {
                       <input type="file" multiple accept="image/*" (change)="onImagesSelected($event)" style="display:none" />
                       <span class="upload-cta">
                         @if (uploading()) { Uploading… }
-                        @else { Click to upload images (multiple allowed) }
+                        @else { Click to upload images (max 5, up to 5 MB each) }
                       </span>
                     </label>
                     @if (tripDraft.imageUrls?.length) {
@@ -343,11 +343,31 @@ export class AdminComponent implements OnInit {
   }
 
   async onImagesSelected(event: Event) {
-    const files = (event.target as HTMLInputElement).files;
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
     if (!files?.length) return;
+
+    const existing = this.tripDraft.imageUrls ?? [];
+    const MAX_IMAGES = 5;
+    const MAX_SIZE_MB = 5;
+
+    const allowed = Array.from(files).filter(f => {
+      if (f.size > MAX_SIZE_MB * 1024 * 1024) {
+        alert(`"${f.name}" exceeds ${MAX_SIZE_MB} MB and was skipped.`);
+        return false;
+      }
+      return true;
+    }).slice(0, MAX_IMAGES - existing.length);
+
+    if (existing.length >= MAX_IMAGES) {
+      alert(`Maximum ${MAX_IMAGES} images allowed.`);
+      input.value = '';
+      return;
+    }
+
     this.uploading.set(true);
-    const urls: string[] = [...(this.tripDraft.imageUrls ?? [])];
-    for (const file of Array.from(files)) {
+    const urls: string[] = [...existing];
+    for (const file of allowed) {
       const ext = file.name.split('.').pop();
       const path = `trips/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from('trip-images').upload(path, file);
@@ -357,6 +377,7 @@ export class AdminComponent implements OnInit {
       }
     }
     this.tripDraft.imageUrls = urls;
+    input.value = '';
     this.uploading.set(false);
   }
 
