@@ -264,7 +264,7 @@ export class BookingService {
       seatsLeft:     (row['seats_left'] as number) ?? 0,
       dates:         Array.isArray(dates) ? dates as string[] : [],
       category:      (row['category'] as Trip['category']) ?? 'group',
-      images:        row['image_url'] ? [row['image_url'] as string] : [],
+      images:        Array.isArray(row['images']) && (row['images'] as string[]).length ? row['images'] as string[] : row['image_url'] ? [row['image_url'] as string] : [],
       description:   (row['description'] as string) ?? '',
       highlights:    Array.isArray(row['highlights']) ? row['highlights'] as string[] : [],
       includes:      Array.isArray(row['includes']) ? row['includes'] as string[] : [],

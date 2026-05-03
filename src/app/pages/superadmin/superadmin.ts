@@ -89,8 +89,24 @@ interface AdminUser {
                     <textarea [(ngModel)]="tripDraft.description" rows="3"></textarea>
                   </div>
                   <div class="field full">
-                    <label>Image URL</label>
-                    <input [(ngModel)]="tripDraft.imageUrl" placeholder="https://..." />
+                    <label>Images</label>
+                    <label class="upload-area">
+                      <input type="file" multiple accept="image/*" (change)="onImagesSelected($event)" style="display:none" />
+                      <span class="upload-cta">
+                        @if (uploading()) { Uploading… }
+                        @else { Click to upload images (multiple allowed) }
+                      </span>
+                    </label>
+                    @if (tripDraft.imageUrls?.length) {
+                      <div class="image-preview-grid">
+                        @for (url of tripDraft.imageUrls!; track url) {
+                          <div class="preview-item">
+                            <img [src]="url" />
+                            <button type="button" class="remove-img" (click)="removeImage(url)">×</button>
+                          </div>
+                        }
+                      </div>
+                    }
                   </div>
                 </div>
                 <div class="form-actions">
@@ -240,6 +256,24 @@ interface AdminUser {
     .modal-danger { padding: 9px 20px; background: #EF4444; border: none; border-radius: 8px; color: #fff; font-size: 0.875rem; font-weight: 600; cursor: pointer; font-family: inherit; }
     .modal-danger:hover { background: #DC2626; }
 
+    .upload-area {
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem; border: 2px dashed rgba(26,26,24,0.2);
+      border-radius: 10px; cursor: pointer; background: #fff;
+      transition: border-color 0.15s;
+    }
+    .upload-area:hover { border-color: #C8622A; }
+    .upload-cta { font-size: 0.85rem; color: #7A7167; }
+    .image-preview-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .preview-item { position: relative; }
+    .preview-item img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; display: block; }
+    .remove-img {
+      position: absolute; top: -6px; right: -6px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #EF4444; color: #fff; border: none;
+      font-size: 0.75rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
     @media (max-width: 640px) {
       .form-grid { grid-template-columns: 1fr; }
       .admin-inner { padding: 2rem 1rem 0; }
@@ -258,7 +292,8 @@ export class SuperadminComponent implements OnInit {
   editingTrip = signal<Trip | null>(null);
   deleteTarget = signal<{ type: 'trip' | 'user'; id: string; name: string } | null>(null);
 
-  tripDraft: Partial<Trip> & { imageUrl?: string } = {};
+  tripDraft: Partial<Trip> & { imageUrls?: string[] } = {};
+  uploading = signal(false);
 
   async ngOnInit() {
     await Promise.all([this.loadTrips(), this.loadUsers()]);
@@ -291,14 +326,36 @@ export class SuperadminComponent implements OnInit {
 
   openTripForm() {
     this.editingTrip.set(null);
-    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0 };
+    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0, imageUrls: [] };
     this.tripFormOpen.set(true);
   }
 
   editTrip(t: Trip) {
     this.editingTrip.set(t);
-    this.tripDraft = { ...t, imageUrl: t.images[0] };
+    this.tripDraft = { ...t, imageUrls: [...t.images] };
     this.tripFormOpen.set(true);
+  }
+
+  async onImagesSelected(event: Event) {
+    const files = (event.target as HTMLInputElement).files;
+    if (!files?.length) return;
+    this.uploading.set(true);
+    const urls: string[] = [...(this.tripDraft.imageUrls ?? [])];
+    for (const file of Array.from(files)) {
+      const ext = file.name.split('.').pop();
+      const path = `trips/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('trip-images').upload(path, file);
+      if (!error) {
+        const { data } = supabase.storage.from('trip-images').getPublicUrl(path);
+        urls.push(data.publicUrl);
+      }
+    }
+    this.tripDraft.imageUrls = urls;
+    this.uploading.set(false);
+  }
+
+  removeImage(url: string) {
+    this.tripDraft.imageUrls = (this.tripDraft.imageUrls ?? []).filter(u => u !== url);
   }
 
   closeTripForm() { this.tripFormOpen.set(false); this.editingTrip.set(null); }
@@ -312,7 +369,8 @@ export class SuperadminComponent implements OnInit {
       duration: draft.duration ?? '', price: draft.price ?? 0,
       max_seats: draft.maxSeats ?? 12, seats_left: draft.seatsLeft ?? 12,
       category: draft.category ?? 'group', description: draft.description ?? '',
-      image_url: draft.imageUrl ?? '',
+      image_url: draft.imageUrls?.[0] ?? '',
+      images: draft.imageUrls ?? [],
     };
 
     const editing = this.editingTrip();
@@ -345,7 +403,7 @@ export class SuperadminComponent implements OnInit {
       id: row.id, name: row.name, tagline: row.tagline ?? '',
       location: row.location, duration: row.duration, price: row.price,
       maxSeats: row.max_seats, seatsLeft: row.seats_left, dates: row.dates ?? [],
-      category: row.category, images: row.image_url ? [row.image_url] : [],
+      category: row.category, images: Array.isArray(row.images) && row.images.length ? row.images : row.image_url ? [row.image_url] : [],
       description: row.description ?? '', highlights: row.highlights ?? [],
       includes: row.includes ?? [], rating: row.rating ?? 0, reviews: row.reviews ?? 0,
     };
