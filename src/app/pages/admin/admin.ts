@@ -108,6 +108,34 @@ interface AdminUser {
                     <textarea [(ngModel)]="tripDraft.description" rows="3"></textarea>
                   </div>
                   <div class="field full">
+                    <label>Highlights</label>
+                    <div class="tag-input-row">
+                      <input [(ngModel)]="newHighlight" placeholder="e.g. Sunrise at Hemakuta Hill" (keyup.enter)="addHighlight()" />
+                      <button type="button" class="tag-add-btn" (click)="addHighlight()">Add</button>
+                    </div>
+                    @if (tripDraft.highlights?.length) {
+                      <div class="tags">
+                        @for (h of tripDraft.highlights!; track h) {
+                          <span class="tag-item">{{ h }}<button type="button" (click)="removeHighlight(h)">×</button></span>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="field full">
+                    <label>What's Included</label>
+                    <div class="tag-input-row">
+                      <input [(ngModel)]="newInclude" placeholder="e.g. All breakfasts + 2 dinners" (keyup.enter)="addInclude()" />
+                      <button type="button" class="tag-add-btn" (click)="addInclude()">Add</button>
+                    </div>
+                    @if (tripDraft.includes?.length) {
+                      <div class="tags">
+                        @for (inc of tripDraft.includes!; track inc) {
+                          <span class="tag-item">{{ inc }}<button type="button" (click)="removeInclude(inc)">×</button></span>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="field full">
                     <label>Images</label>
                     <label class="upload-area">
                       <input type="file" multiple accept="image/*" (change)="onImagesSelected($event)" style="display:none" />
@@ -283,6 +311,15 @@ interface AdminUser {
     .modal-danger { padding: 9px 20px; background: #EF4444; border: none; border-radius: 8px; color: #fff; font-size: 0.875rem; font-weight: 600; cursor: pointer; font-family: inherit; }
     .modal-danger:hover { background: #DC2626; }
 
+    .tag-input-row { display: flex; gap: 8px; }
+    .tag-input-row input { flex: 1; padding: 9px 12px; border: 1.5px solid rgba(26,26,24,0.15); border-radius: 8px; font-size: 0.88rem; color: #1A1A18; background: #fff; font-family: inherit; outline: none; }
+    .tag-input-row input:focus { border-color: #2C4A3E; }
+    .tag-add-btn { padding: 9px 16px; background: #2C4A3E; color: #fff; border: none; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .tag-add-btn:hover { background: #3d6655; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .tag-item { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: rgba(44,74,62,0.08); border-radius: 100px; font-size: 0.8rem; color: #2C4A3E; font-weight: 500; }
+    .tag-item button { background: none; border: none; cursor: pointer; color: #7A7167; font-size: 0.9rem; padding: 0; line-height: 1; }
+    .tag-item button:hover { color: #EF4444; }
     .upload-area {
       display: flex; align-items: center; justify-content: center;
       padding: 1.25rem; border: 2px dashed rgba(26,26,24,0.2);
@@ -322,6 +359,8 @@ export class AdminComponent implements OnInit {
   deleteTarget = signal<{ type: 'trip' | 'user'; id: string; name: string } | null>(null);
 
   tripDraft: Partial<Trip> & { imageUrls?: string[]; startDate?: string; endDate?: string } = {};
+  newHighlight = '';
+  newInclude = '';
   uploading = signal(false);
 
   async ngOnInit() {
@@ -350,14 +389,33 @@ export class AdminComponent implements OnInit {
 
   openTripForm() {
     this.editingTrip.set(null);
-    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0, status: 'upcoming', imageUrls: [] };
+    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0, status: 'upcoming', imageUrls: [], highlights: [], includes: [] };
+    this.newHighlight = ''; this.newInclude = '';
     this.tripFormOpen.set(true);
   }
 
   editTrip(t: Trip) {
     this.editingTrip.set(t);
-    this.tripDraft = { ...t, imageUrls: [...t.images], startDate: (t as any).startDate ?? '', endDate: (t as any).endDate ?? '' };
+    this.tripDraft = { ...t, imageUrls: [...t.images], startDate: (t as any).startDate ?? '', endDate: (t as any).endDate ?? '', highlights: [...(t.highlights ?? [])], includes: [...(t.includes ?? [])] };
+    this.newHighlight = ''; this.newInclude = '';
     this.tripFormOpen.set(true);
+  }
+
+  addHighlight() {
+    if (!this.newHighlight.trim()) return;
+    this.tripDraft.highlights = [...(this.tripDraft.highlights ?? []), this.newHighlight.trim()];
+    this.newHighlight = '';
+  }
+  removeHighlight(h: string) {
+    this.tripDraft.highlights = (this.tripDraft.highlights ?? []).filter(x => x !== h);
+  }
+  addInclude() {
+    if (!this.newInclude.trim()) return;
+    this.tripDraft.includes = [...(this.tripDraft.includes ?? []), this.newInclude.trim()];
+    this.newInclude = '';
+  }
+  removeInclude(inc: string) {
+    this.tripDraft.includes = (this.tripDraft.includes ?? []).filter(x => x !== inc);
   }
 
   async onImagesSelected(event: Event) {
@@ -423,8 +481,10 @@ export class AdminComponent implements OnInit {
       original_price: draft.originalPrice ?? null,
       capacity:       draft.maxSeats ?? 12,
       seats_left:     draft.seatsLeft ?? 12,
-      status:         (draft.status as string) ?? 'published',
+      status:         (draft.status as string) ?? 'upcoming',
       description:    draft.description ?? '',
+      highlights:     draft.highlights ?? [],
+      includes:       draft.includes ?? [],
       images:         draft.imageUrls ?? [],
     };
 
@@ -489,11 +549,11 @@ export class AdminComponent implements OnInit {
       category:      row.trip_type ?? 'group',
       images:        Array.isArray(row.images) && row.images.length ? row.images : [],
       description:   row.description ?? '',
-      highlights:    [],
-      includes:      [],
+      highlights:    Array.isArray(row.highlights) ? row.highlights : [],
+      includes:      Array.isArray(row.includes) ? row.includes : [],
       rating:        0,
       reviews:       0,
-      status:        row.status ?? 'published',
+      status:        row.status ?? 'upcoming',
       startDate:     row.start_date ?? '',
       endDate:       row.end_date ?? '',
     };
