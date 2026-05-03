@@ -95,9 +95,11 @@ interface AdminUser {
                   <div class="field">
                     <label>Status</label>
                     <select [(ngModel)]="tripDraft.status">
-                      <option value="published">Published</option>
-                      <option value="draft">Draft</option>
-                      <option value="archived">Archived</option>
+                      <option value="upcoming">Upcoming</option>
+                      <option value="full">Full</option>
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
                   <div class="field full">
@@ -342,7 +344,7 @@ export class SuperadminComponent implements OnInit {
 
   openTripForm() {
     this.editingTrip.set(null);
-    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0, status: 'published', imageUrls: [] };
+    this.tripDraft = { category: 'group', maxSeats: 12, seatsLeft: 12, price: 0, status: 'upcoming', imageUrls: [] };
     this.tripFormOpen.set(true);
   }
 

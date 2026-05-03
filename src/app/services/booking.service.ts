@@ -181,7 +181,7 @@ export class BookingService {
     const { data, error } = await supabase
       .from('trips')
       .select('*')
-      .eq('status', 'published')
+      .in('status', ['upcoming', 'ongoing', 'full'])
       .order('created_at', { ascending: false });
 
     if (error || !data || data.length === 0) return TRIPS;
