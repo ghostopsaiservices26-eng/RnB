@@ -324,9 +324,9 @@ export class TripDetailComponent implements OnInit {
     public auth: AuthService,
   ) {}
 
-  ngOnInit() {
+  async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
-    this.trip.set(this.bookingSvc.getTripById(id));
+    this.trip.set(await this.bookingSvc.getTripById(id));
   }
 
   categoryLabel(cat: Trip['category']): string {

@@ -517,9 +517,9 @@ export class BookingComponent implements OnInit {
     return t ? t.price * seats : 0;
   });
 
-  ngOnInit() {
+  async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
-    const trip = this.bookingSvc.getTripById(id);
+    const trip = await this.bookingSvc.getTripById(id);
     if (!trip) { this.router.navigate(['/trips']); return; }
     this.trip.set(trip);
 

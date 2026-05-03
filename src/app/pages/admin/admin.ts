@@ -3,7 +3,7 @@ import {} from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe, SlicePipe } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
-import { BookingService, Trip, TRIPS } from '../../services/booking.service';
+import { BookingService, Trip } from '../../services/booking.service';
 import { supabase } from '../../supabase.client';
 
 interface AdminUser {
@@ -270,36 +270,36 @@ export class AdminComponent implements OnInit {
   tripDraft: Partial<Trip> & { imageUrl?: string } = {};
 
   async ngOnInit() {
-    this.trips.set(this.bookingSvc.getTrips());
-    await this.loadUsers();
+    await Promise.all([this.loadTrips(), this.loadUsers()]);
+  }
+
+  async loadTrips() {
+    const { data } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
+    if (data && data.length > 0) this.trips.set(data.map(this.mapTripRow));
+    else this.trips.set(await this.bookingSvc.getTrips());
   }
 
   async loadUsers() {
     this.usersLoading.set(true);
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, role, created_at')
-      .order('created_at', { ascending: false });
 
-    if (!data) { this.usersLoading.set(false); return; }
+    const [{ data: meta }, { data: profiles }] = await Promise.all([
+      supabase.rpc('get_users_metadata'),
+      supabase.from('profiles').select('id, role, created_at'),
+    ]);
 
-    const users: AdminUser[] = data.map((p: any) => ({
-      id: p.id,
-      email: '',
-      name: '',
-      phone: '',
-      role: p.role,
-      created_at: p.created_at,
-    }));
+    const profileMap = new Map((profiles ?? []).map((p: any) => [p.id, p]));
 
-    // fetch metadata from auth.users via RPC if superadmin, else show what we have
-    const { data: meta } = await supabase.rpc('get_users_metadata');
-    if (meta) {
-      meta.forEach((m: any) => {
-        const u = users.find(x => x.id === m.id);
-        if (u) { u.email = m.email; u.name = m.name; u.phone = m.phone; }
-      });
-    }
+    const users: AdminUser[] = (meta ?? []).map((m: any) => {
+      const p = profileMap.get(m.id);
+      return {
+        id: m.id,
+        email: m.email ?? '',
+        name: m.name ?? '',
+        phone: m.phone ?? '',
+        role: p?.role ?? 'user',
+        created_at: p?.created_at ?? m.created_at ?? '',
+      };
+    });
 
     this.users.set(users);
     this.usersLoading.set(false);
@@ -346,10 +346,7 @@ export class AdminComponent implements OnInit {
       await supabase.from('trips').insert(payload);
     }
 
-    // Reload from DB
-    const { data } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
-    if (data) this.trips.set(data.map(this.mapTripRow));
-    else this.trips.set(this.bookingSvc.getTrips());
+    await this.loadTrips();
 
     this.closeTripForm();
   }

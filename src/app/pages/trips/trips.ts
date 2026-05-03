@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { BookingService, Trip } from '../../services/booking.service';
@@ -85,7 +85,11 @@ type Filter = 'all' | 'group' | 'workcation' | 'corporate' | 'villa';
           }
         </div>
 
-        @if (filteredTrips().length === 0) {
+        @if (loading()) {
+          <div class="empty-state">
+            <p>Loading trips…</p>
+          </div>
+        } @else if (filteredTrips().length === 0) {
           <div class="empty-state">
             <p>No trips found for this category.</p>
           </div>
@@ -267,7 +271,7 @@ type Filter = 'all' | 'group' | 'workcation' | 'corporate' | 'villa';
     }
   `],
 })
-export class TripsPageComponent {
+export class TripsPageComponent implements OnInit {
   private bookingSvc = inject(BookingService);
 
   filters: { key: Filter; label: string }[] = [
@@ -279,12 +283,19 @@ export class TripsPageComponent {
   ];
 
   activeFilter = signal<Filter>('all');
-  allTrips = this.bookingSvc.getTrips();
+  allTrips = signal<Trip[]>([]);
+  loading = signal(true);
 
   filteredTrips = computed(() => {
     const f = this.activeFilter();
-    return f === 'all' ? this.allTrips : this.allTrips.filter(t => t.category === f);
+    const trips = this.allTrips();
+    return f === 'all' ? trips : trips.filter(t => t.category === f);
   });
+
+  async ngOnInit() {
+    this.allTrips.set(await this.bookingSvc.getTrips());
+    this.loading.set(false);
+  }
 
   categoryLabel(cat: Trip['category']): string {
     return { group: 'Group Trip', workcation: 'Workcation', corporate: 'Corporate', villa: 'Private Villa' }[cat];
