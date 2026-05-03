@@ -389,7 +389,7 @@ export class SuperadminComponent implements OnInit {
       name: draft.name!, tagline: draft.tagline ?? '', location: draft.location!,
       duration: draft.duration ?? '', price: draft.price ?? 0,
       max_seats: draft.maxSeats ?? 12, seats_left: draft.seatsLeft ?? 12,
-      category: draft.category ?? 'group', description: draft.description ?? '',
+      trip_type: draft.category ?? 'group', description: draft.description ?? '',
       image_url: draft.imageUrls?.[0] ?? '',
       images: draft.imageUrls ?? [],
     };
@@ -424,7 +424,7 @@ export class SuperadminComponent implements OnInit {
       id: row.id, name: row.name, tagline: row.tagline ?? '',
       location: row.location, duration: row.duration, price: row.price,
       maxSeats: row.max_seats, seatsLeft: row.seats_left, dates: row.dates ?? [],
-      category: row.category, images: Array.isArray(row.images) && row.images.length ? row.images : row.image_url ? [row.image_url] : [],
+      category: row.trip_type, images: Array.isArray(row.images) && row.images.length ? row.images : row.image_url ? [row.image_url] : [],
       description: row.description ?? '', highlights: row.highlights ?? [],
       includes: row.includes ?? [], rating: row.rating ?? 0, reviews: row.reviews ?? 0,
     };
