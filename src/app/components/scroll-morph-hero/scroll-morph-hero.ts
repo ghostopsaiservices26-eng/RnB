@@ -6,7 +6,9 @@ import {
   ViewChild,
   NgZone,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import gsap from 'gsap';
 
 type AnimationPhase = 'scatter' | 'line' | 'circle';
@@ -77,8 +79,8 @@ function lerp(a: number, b: number, t: number) {
           and create experiences worth becoming stories.
         </p>
         <div class="smh-cta-row">
-          <button class="smh-btn-primary">Explore Trips</button>
-          <button class="smh-btn-ghost">How It Works</button>
+          <button class="smh-btn-primary" (click)="goToTrips()">Explore Trips</button>
+          <button class="smh-btn-ghost" (click)="scrollToTrips()">How It Works</button>
         </div>
       </div>
 
@@ -348,6 +350,8 @@ function lerp(a: number, b: number, t: number) {
   `],
 })
 export class ScrollMorphHeroComponent implements AfterViewInit, OnDestroy {
+  private router = inject(Router);
+
   @ViewChild('container') containerRef!: ElementRef<HTMLDivElement>;
   @ViewChild('introText') introTextRef!: ElementRef<HTMLDivElement>;
   @ViewChild('arcContent') arcContentRef!: ElementRef<HTMLDivElement>;
@@ -378,6 +382,13 @@ export class ScrollMorphHeroComponent implements AfterViewInit, OnDestroy {
   }));
 
   constructor(private zone: NgZone) {}
+
+  goToTrips() { this.router.navigate(['/trips']); }
+
+  scrollToTrips() {
+    const el = document.getElementById('trips');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
 
   ngAfterViewInit() {
     const container = this.containerRef.nativeElement;
